@@ -421,3 +421,31 @@ class StyleClassifier(nn.Module):
             h = x[0][:, -1, :]  # only use the last hidden state
         logit = self.classifier(h)
         return logit
+
+
+class SentenceEncoder(nn.Module):
+    def __init__(self, in_dim, lstm_h_dim=1024, lstm_layer=2):
+        '''
+        sentence level feature encoder, to replace the back translation module
+        :param in_dim:
+        :param out_dim:
+        :param lstm_h_dim:
+        :param lstm_layer:
+        '''
+        super(SentenceEncoder, self).__init__()
+        self.feature = nn.Sequential(
+            nn.LSTM(in_dim, lstm_h_dim, lstm_layer, batch_first=True)
+        )
+
+    def forward(self, x, l=None, is_pack=False):
+        if is_pack:
+            x, _ = self.feature(x)
+            x, _ = torch.nn.utils.rnn.pad_packed_sequence(x, batch_first=True)
+            h = []
+            for i in range(x.shape[0]):
+                h.append(x[i, l[i] - 1, :])
+            h = torch.stack(h, 0)
+        else:
+            x = self.feature(x)
+            h = x[0][:, -1, :]  # only use the last hidden state
+        return h
